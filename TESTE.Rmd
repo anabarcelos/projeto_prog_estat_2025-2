@@ -1,0 +1,179 @@
+---
+title: "projeto"
+output:
+  html_document: default
+  pdf_document: default
+date: "2025-11-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introdução
+
+O método de amostragem uniforme com reposição é utilizado em experimentos probabilísticos e estatísticos para selecionar elementos de um conjunto, o método funciona da seguinte maneira. Cada elemento do conjunto possui a mesma probabilidade de ser selecionado, ou seja, não existe preferência ou peso sobre os elementos do conjunto. Se temos um conjunto com N elementos, a probabilidade de selecionar qualquer um deles é $P(\text{selecionar um elemento}) = \frac{1}{N}$ ​ Após um elemento ser escolhido, ele é devolvido ao conjunto antes da próxima seleção, garantido que:
+
+-   O número total de elementos permanece constante.
+
+-   As probabilidades não mudem ao longo do processo.
+
+-   Cada seleção é independente da anterior.
+
+Assim, o resultado de uma escolha não influencia a próxima.
+
+##CUPOM COLETOR
+O primeiro problema que trataremos neste trabalho é o "Cupom- coletor"
+
+## PARADOXO DO ANIVERSÁRIO
+
+Falaremos agora do problema “Paradoxo do Aniversário” que consiste em determinar a probabilidade de que em um grupo com k pessoas, pelo menos duas delas compartilhem o mesmo dia de aniversário. Pode parecer intuitivo imaginar que seriam necessárias muitas pessoas para que as coincidências aconteçam, a teoria mostra que essa probabilidade cresce mais rápido do que esperamos, intuitivamente.
+
+Para modelar esse problema utilizamos o conceito de amostragem uniforme com reposição, na qual cada aniversário é representado como um número entre 1 e 365, e assumimos que cada pessoa possui a mesma probabilidade de nascer em qualquer um desses dias. Além disso, consideramos que o nascimento de uma pessoa não afeta o nascimento de outra, ou seja, as escolhas são independentes, sendo assim, os aniversários são sorteados com reposição, ou seja, mesmo que uma data já represente o aniversário de uma pessoa x, essa data permanece disponível para ser sorteada para uma pessoa y. Matematicamente, isso significa que
+
+$P(\text{nascer em qualquer dia}) = \frac{1}{365}$.
+
+Esse modelo é fundamental porque permite que coincidências aconteçam naturalmente no processo, exatamente como ocorre no mundo real, ao aplicar simulação computacional baseada nessa estrutura, podemos estimar a probabilidade de colisão para diferentes tamanhos de grupo e assim responder à pergunta central deste estudo, “Quão poucas pessoas são necessárias para que seja provável uma coincidência de aniversários?”.
+
+A análise que será apresentada a seguir busca investigar essa questão e ilustrar como pequenas variações no tamanho do grupo podem produzir mudanças significativas na probabilidade de colisão.
+
+```{r}
+set.seed(779786)
+
+colisao <- function(k, N) {
+  aniversarios <- sample(1:N, k, replace = TRUE)   
+  return(length(unique(aniversarios)) < k)         #verficando se ha colisao, 
+                                                   #TRUE: existe pelo menos uma coincidencia (colisao) de aniversarios
+                                                   #FALSE:todos os aniversarios são diferentes
+  
+}
+
+paradoxo <- function(k_min, k_max, M, N) {
+  resultados <- list()  
+  k_vals <- k_min:k_max
+  prob_colisao <- numeric(length(k_vals))
+  
+  for (i in seq_along(k_vals)) {
+    k <- k_vals[i]
+    M_simulacoes <- replicate(M, colisao(k, N)) #para cada k realiza M simulacoes
+    prob_colisao[i] <- mean(M_simulacoes)  #media dos resultado (TRUE = 1; FALSE = 0)
+  }
+  
+  df_resultados <- data.frame(pessoas = k_vals, probabilidade = prob_colisao)
+  return(df_resultados)
+}
+
+#paramentros indicados no projeto
+N <- 365           #numero de possiveis aniversarios
+M <- 10000         #numero de simulacoes para cada um dos k
+k_min <- 2        #valor minimo para k 
+k_max <- 60       #valor maximo para k
+
+df_resultados <- paradoxo(k_min, k_max, M, N)
+print(df_resultados)
+
+#respondendo a pergunta 'quantas pessoas são necessárias para que a chance de coincidencia
+#seja de aproximadamente 50%?
+prob_0.5 <- which.min(abs(df_resultados$probabilidade - 0.5))
+pessoas_0.5 <- df_resultados$pessoas[prob_0.5]
+
+cat("\nNumero de pessoas onde P(colisao) ≈ 0.5:", pessoas_0.5, "\n")
+cat("Probabilidade estimada para", pessoas_0.5, "pessoas:",
+    round(df_resultados$probabilidade[prob_0.5], 4), "\n")
+
+#a linha vermelha mostra a quantidade de pessoas necessarias para que que a chance de coincidencia
+#seja de aproximadamente 50%? 
+library(ggplot2)
+grafico <- ggplot(df_resultados, aes(x = pessoas, y = probabilidade)) +
+  geom_line(color = "grey") +
+  geom_point(color = "black") +
+  geom_hline(yintercept = 0.5, color = "red", linetype = "dashed") +
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0,1,0.1)) +
+  labs(
+    title = "Paradoxo do Aniversario: probabilidade de Colisao",
+    x = "Numero de pessoas (k)",
+    y = "probabilidade de pelo menos uma colisao",
+    caption = paste("Simulacoes:", M, "por valor de k")
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+print(grafico)
+```
+
+O código apresentado acima utiliza simulação de Monte Carlo para estimar a probabilidade de que em um grupo de k pessoas pelo menos duas delas compartilhem o mesmo dia de aniversário. A função colisao verifica se ocorre ao menos uma coincidência entre as datas, enquanto a função paradoxo repete esse procedimento diversas vezes para diferentes tamanhos de grupo, retornando uma estimativa da probabilidade para cada valor de k.
+
+-   **Função colisao(k, N)**
+
+    -   **colisao \<- function(k, N):** Define uma função chamada colisao que recebe dois parâmetros:
+        -   k: número de pessoas no grupo
+        -   N: número de possíveis dias de aniversário (geralmente N = 365)
+
+    <!-- -->
+
+    -   **aniversarios \<- sample(1:N, k, replace = TRUE):** Gera k aniversários aleatórios com reposição, escolhidos entre os N dias disponíveis, ou seja, estamos simulando k pessoas escolhendo seus aniversários ao acaso.
+
+    -   **length(unique(aniversarios)) \< k**
+
+        -   unique(aniversarios) remove datas repetidas.
+
+        -   Se o número de datas únicas for menor que k, significa que pelo menos duas pessoas compartilharam o dia de aniversário.
+
+        -   O resultado é lógico:
+
+            -   TRUE se houve colisão (pelo menos um aniversário repetido)
+
+            -   FALSE se todos são diferente
+
+    -   **Função paradoxo(k_min, k_max, M, N)**
+
+        -   **paradoxo \<- function(k_min, k_max, M, N):** Define a função que vai calcular a probabilidade de colisão para diferentes valores de k.
+
+        -   **k_vals \<- k_min:k_max:** Cria um vetor com todos os valores de k entre k_min e k_max (por exemplo, k = 2 até 60).
+
+        -   **prob_colisao \<- numeric(length(k_vals)):** Cria um vetor vazio para armazenar a probabilidade de colisão para cada valor de k.
+
+    -   **Loop de Simulação**
+
+        -   **for (i in seq_along(k_vals)) { ... }:** Percorre cada valor de k dentro do intervalo especificado.
+
+        -   **M_simulacoes \<- replicate(M, colisao(k, N)):** Para cada k, realiza M simulações:
+
+            -   A função colisao(k, N) é chamada M vezes
+
+            -   O resultado é um vetor lógico com valores TRUE/FALSE
+
+        -   **prob_colisao[i] \<- mean(M_simulacoes):** A média de um vetor lógico converte TRUE = 1 e FALSE = 0. Assim $\text{média} = \frac{\text{número de colisões}}{M}$ , essa é a estimativa da probabilidade de coincidência de aniversários para aquele k.
+
+    -   **Criação do Data Frame Resultado**
+
+        -   **df_resultados \<- data.frame(pessoas = k_vals, probabilidade = prob_colisao):** Organiza os resultados em uma tabela com duas colunas:
+
+            -   número de pessoas k
+
+            -   probabilidade estimada de colisão para esse k
+
+    -   **return(df_resultados):** Retorna a tabela gerada anteriormente.
+
+-   **Paramêtros**
+
+    -   N \<- 365 é o número total de possíveis dias de aniversário
+
+    -   M \<- 10000 é o número de simulações de Monte Carlo para cada valor de k.
+
+    -   k_min \<- 2 e k_max \<- 60 é o intervalo dos tamanhos de grupos que serão avaliados, estiamremos a probabilidade de colisão para grupos de 2 a 60 pessoas.
+
+-   df_resultados \<- paradoxo(k_min, k_max, M, N): Chama a função definida anteriormente que calcula a probabilidade de colisão para cada valor de k, seu resultado é um data frame contendo duas colunas:
+
+    -   pessoas: número de pessoas no grupo
+
+    -   probabilidade: probabilidade estimada de haver pelo menos um aniversário repetido
+
+-   prob_0.5 \<- which.min(abs(df_resultados\$probabilidade - 0.5)) : Procura o valor de k cuja probabilidade está mais próxima de 0.5 (50%), isso é feito comparando a diferença absoluta entre cada valor e 0.5.
+
+-   pessoas_0.5 \<- df_resultados\$pessoas[prob_0.5]: Armazena o correspondente número de pessoas k onde essa probabilidade ocorre.
+
+## Intepretação
+
+Nos resultados obtidos é observado que são necessárias aproximadamente 23 pessoas para termos uma probabilidade de colisão próxima de 50%, esse resultado pode ser contra intuitivo para muitas pessoas, pois de forma intuitiva, é esperado que seja necessário um grupo muito maior, para que pelo menos 2 pessoas façam aniversário no mesmo dia, esse comportamento inesperado é justamente o que caracteriza o Paradoxo do Aniversário.
+
+O gráfico gerado apresenta a probabilidade estimada de colisão em função do número de pessoas no grupo (k), cada ponto corresponde ao valor médio obtido pela simulação, enquanto a linha horizontal vermelha representa o nível de probabilidade de 50%. Foi observado no gráfico que para valores muito pequenos de k, valores próximos de 2 a 10 pessoas, a probabilidade de coincidência ainda é bem baixa, permanecendo próxima de zero, mas a partir de aproximadamente 15 pessoas, a curva começa a se inclinar de maneira mais acentuada, indicando um crescimento mais rápido da probabilidade de colisão, já ao redor de 23 pessoas, ocorre o ponto em que a probabilidade ultrapassa 50%, esse é o ponto central do paradoxo, com apenas cerca de 23 pessoas, a chance de coincidência de dias de aniversário já é maior do que a de não ocorrer a coincidência. Após cerca de 35 pessoas, a curva se aproxima de valores próximos a 80% ou mais, e a probabilidade continua aumentando até se aproximar de 100% conforme k se aproxima de 60, assim podemos concluir que embora existam 365 datas possíveis, o número de pares possíveis entre as pessoas cresce rapidamente, o que explica o aumento expressivo da probabilidade de colisão.
